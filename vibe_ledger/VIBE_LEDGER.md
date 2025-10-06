@@ -17,7 +17,7 @@ Example entry (seeded by CLIne on repo init):
     - "Adopt hybrid PQC + QKD-inspired pattern for session keys (QASP v0.1)."
   rationale:
     - "Follow NIST PQC guidance and SIPRI primer for QKD tradeoffs."
-  commit: "<commit-sha>"
+  commit: "c3db1b8"
   notes: "Use HSM for private key storage; pilot Kyber + Dilithium."
 
 •	New entries MUST include: id, date, actor, task, status, files_changed, commit, notes.
