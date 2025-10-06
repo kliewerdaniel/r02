@@ -6,3 +6,5 @@ pytest
 pytest-asyncio
 aiohttp
 oqs
+structlog
+prometheus_client
