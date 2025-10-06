@@ -19,3 +19,6 @@ for QuantumSecureAPI.
 - Randomness source: Prefer a certified **QRNG** for seeding high-entropy pools when hardware is available; otherwise use OS CSPRNG seeded by entropy-harvesting best practices.
 
 **Warning:** use vetted libraries (libs that implement FIPS/PQC standards) and hardware HSMs. Do NOT implement crypto primitives yourself.
+
+## Runtime Integration Notes
+In production, the implementations in src/qasp/crypto.py will integrate with HSM/KMS for private key operations. The TODO comments in the code indicate where HSM calls should plug in (e.g., `store_priv_kem_in_hsm()` or `hs_m_kem_encapsulate()`). For QKD, replace the mock service in src/qkd/mock_qkd.py with actual hardware providers exposing REST APIs or direct hardware interfaces. Ensure QKD keys are handled only in volatile memory and never logged in plaintext.

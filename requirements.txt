@@ -1,0 +1,8 @@
+fastapi
+uvicorn[standard]
+pydantic
+cryptography
+pytest
+pytest-asyncio
+aiohttp
+oqs
