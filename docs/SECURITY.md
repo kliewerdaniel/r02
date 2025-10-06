@@ -22,3 +22,18 @@ for QuantumSecureAPI.
 
 ## Runtime Integration Notes
 In production, the implementations in src/qasp/crypto.py will integrate with HSM/KMS for private key operations. The TODO comments in the code indicate where HSM calls should plug in (e.g., `store_priv_kem_in_hsm()` or `hs_m_kem_encapsulate()`). For QKD, replace the mock service in src/qkd/mock_qkd.py with actual hardware providers exposing REST APIs or direct hardware interfaces. Ensure QKD keys are handled only in volatile memory and never logged in plaintext.
+
+## HSM Integration & Operational Security Controls
+Private PQC keys are stored encrypted at rest using AES-GCM in the HSM keystore (src/hsm/mock_hsm.py). The master key is derived from the HSM_MASTER_SECRET environment variable. Key operations are logged with INFO and SECURITY levels for audit trails.
+
+- **Key Storage**: Private keys are encrypted with unique nonces and stored in memory.
+- **Key Retrieval**: On-demand decryption for cryptographic operations.
+- **Audit Logging**: All key operations include security event IDs and structured logging.
+- **Access Control**: Keys are scoped by client_id and key_type (kem/sign).
+
+## Crypto Agility Policy
+QASP supports runtime algorithm selection via environment variables:
+- `KEM_ALG`: KEM algorithm (default: Kyber512, alternatives: Kyber768, Kyber1024, FrodoKEM variants)
+- `SIG_ALG`: Signature algorithm (default: Dilithium3, alternatives: Dilithium2, Dilithium5, Falcon variants)
+
+Algorithms are validated at startup. Fallback to defaults if unsupported. This enables zero-downtime algorithm upgrades in response to advances in PQC research or security requirements.

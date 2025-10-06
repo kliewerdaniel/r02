@@ -22,3 +22,42 @@
 1. `git init && git checkout -b vibe/init`
 2. CLIne will create the files below and commit them as `chore:init-templates`.
 3. Read `vibe_ledger/VIBE_LEDGER.md` for tasks and the current sprint.
+
+## Configuring Algorithms
+
+QASP supports crypto-agility through environment variables:
+
+```bash
+export KEM_ALG=Kyber512    # Kyber512 (default), Kyber768, Kyber1024, FrodoKEM variants
+export SIG_ALG=Dilithium3  # Dilithium3 (default), Dilithium2, Dilithium5, Falcon variants
+```
+
+Start with defaults for compatibility. Algorithms are validated at startup.
+
+## Metrics
+
+Prometheus metrics are exposed at `/metrics` endpoint:
+
+- `qasp_handshake_duration_seconds` - Handshake operation latency
+- `qasp_handshakes_total` - Total handshakes (success/failure)
+- `qasp_challenges_total` - Challenge verification counters
+- `qasp_resource_access_total` - Protected resource access counters
+
+## Audit Pipeline
+
+Automated cryptographic audit in CI validates PQC algorithms:
+
+- **Job**: `audit-crypto-params` in GitHub Actions
+- **Script**: `tools/audit_crypto_params.py`
+- **Output**: `crypto_audit_report.txt` artifact
+- **Checks**: Algorithm availability, parameter sizes, NIST levels, functional tests
+
+See `docs/AUDIT_PIPELINE.md` for detailed interpretation guide.
+
+## Next Steps
+
+Phase 2 (hardening) complete. Future phases:
+
+1. **Phase 3**: Real hardware integration (HSM, QRNG, QKD)
+2. **Phase 4**: Performance optimization and scaling
+3. **Phase 5**: Production deployment and monitoring

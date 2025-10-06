@@ -45,4 +45,46 @@ Example entry (seeded by CLIne on repo init):
   commit: "97a9007"
   notes: "liboqs is prototyping-only; production requires HSM & vendor validated libs."
 
+- id: 0003
+  date: 2025-10-06
+  actor: CLIne
+  task: "Design and scaffold HSM/KMS abstraction + telemetry"
+  status: done
+  decisions:
+    - "MockHSM with AES-GCM encryption and environment master key"
+    - "Structlog JSON logs + Prometheus metrics"
+    - "Crypto-agility with environment variables KEM_ALG/SIG_ALG"
+    - "Rate limiting and request signature middleware"
+  files_changed:
+    - src/hsm/abstract_store.py
+    - src/hsm/mock_hsm.py
+    - src/telemetry/logging_config.py
+    - src/telemetry/metrics.py
+    - src/config/crypto_config.py
+    - src/server/middleware.py
+  commit: "4eccc2d"
+  notes: "Phase 2 hardening scaffold complete; stores server keys in HSM on startup."
+
+- id: 0004
+  date: 2025-10-06
+  actor: CLIne
+  task: "Implement crypto-agility config, audit pipeline, rate-limiting"
+  status: done
+  decisions:
+    - "CI job 'audit-crypto-params' with PQC parameter validation"
+    - "Crypto config validation at startup"
+    - "Rate limit: 10 requests/minute per client"
+    - "Optional request signature middleware for replay protection"
+  files_changed:
+    - src/qasp/crypto.py
+    - src/server/main.py
+    - tools/audit_crypto_params.py
+    - .github/workflows/ci.yml
+    - docs/THREAT_MODEL.md
+    - docs/SECURITY.md
+    - docs/AUDIT_PIPELINE.md
+    - README.md
+  commit: "be7143d"
+  notes: "Implementation & audit pipeline integrated; server uses HSM when HSM_ENABLED=true."
+
 •	New entries MUST include: id, date, actor, task, status, files_changed, commit, notes.
