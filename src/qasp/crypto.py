@@ -5,15 +5,11 @@ from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 from cryptography.hazmat.primitives import hashes
 import oqs
 from .hsm.abstract_store import KeyStoreABC
-
-# TODO: Remove hardcoded algorithms, use config from crypto_config.py
-# Use NIST PQC recommended algorithms for prototyping
-KEM_ALGORITHM = "Kyber512"
-SIGNATURE_ALGORITHM = "Dilithium3"
+from .config.crypto_config import get_kem_algorithm, get_signature_algorithm
 
 class PQCKEM:
     def __init__(self, keystore: Optional[KeyStoreABC] = None, client_id: Optional[str] = None):
-        self.kem = oqs.KeyEncapsulation(KEM_ALGORITHM)
+        self.kem = oqs.KeyEncapsulation(get_kem_algorithm())
         self.public_bytes = None
         self.keystore = keystore
         self.client_id = client_id
@@ -45,7 +41,7 @@ class PQCKEM:
 
 class PQCSign:
     def __init__(self, keystore: Optional[KeyStoreABC] = None, client_id: Optional[str] = None):
-        self.sig = oqs.Signature(SIGNATURE_ALGORITHM)
+        self.sig = oqs.Signature(get_signature_algorithm())
         self.public_bytes = None
         self._private_key = None
         self.keystore = keystore
@@ -63,7 +59,7 @@ class PQCSign:
 
     @staticmethod
     def verify(pub: bytes, message: bytes, sig: bytes) -> bool:
-        with oqs.Signature(SIGNATURE_ALGORITHM) as verifier:
+        with oqs.Signature(get_signature_algorithm()) as verifier:
             is_valid = verifier.verify(message, sig, pub)
             return is_valid
 
