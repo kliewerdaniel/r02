@@ -42,7 +42,7 @@ Example entry (seeded by CLIne on repo init):
     - "HKDF + XChaCha20-Poly1305 AEAD"
   rationale:
     - "As per NIST PQC selections and SIPRI design guidance."
-  commit: ""
+  commit: "97a9007"
   notes: "liboqs is prototyping-only; production requires HSM & vendor validated libs."
 
 •	New entries MUST include: id, date, actor, task, status, files_changed, commit, notes.

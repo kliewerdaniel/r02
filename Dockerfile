@@ -1,14 +1,15 @@
 FROM python:3.11-slim
 
 # Install build dependencies for liboqs
-RUN apt-get update && apt-get install -y \\
-    cmake \\
-    gcc \\
-    make \\
-    libssl-dev \\
+RUN apt-get update && apt-get install -y \
+    cmake \
+    gcc \
+    make \
+    libssl-dev \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
+ENV PYTHONPATH /app
 
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
