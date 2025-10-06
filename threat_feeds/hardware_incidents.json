@@ -1,0 +1,67 @@
+{
+  "metadata": {
+    "feed_name": "Hardware Security Incidents",
+    "version": "2025.2",
+    "last_updated": "2025-10-06T12:00:00Z",
+    "source": "ENISA Threat Intelligence",
+    "description": "Feed of hardware-related security incidents affecting cryptographic operations"
+  },
+  "incidents": [
+    {
+      "id": "HW-SEC-2025-001",
+      "type": "side_channel_attack",
+      "severity": "HIGH",
+      "threat_score": 0.8,
+      "affected_hardware": ["Intel Xeon", "AMD EPYC"],
+      "description": "Microarchitectural side-channel attack affecting cryptographic key operations",
+      "detected_date": "2025-09-10",
+      "ongoing": true,
+      "impact_on_qkd": "HIGH",
+      "impact_on_crypto": "MEDIUM",
+      "mitigations": ["Apply microcode patches", "Enable SGX if available", "Monitor for unusual timing patterns"],
+      "cve_ids": ["CVE-2025-ZZZZ"]
+    },
+    {
+      "id": "HW-SEC-2025-002",
+      "type": "rng_compromise",
+      "severity": "CRITICAL",
+      "threat_score": 0.95,
+      "affected_hardware": ["ARM-based servers"],
+      "description": "Hardware random number generator predictability under certain entropy conditions",
+      "detected_date": "2025-09-18",
+      "ongoing": false,
+      "impact_on_qkd": "CRITICAL",
+      "impact_on_crypto": "CRITICAL",
+      "mitigations": ["Switch to external entropy sources", "Verify RNG statistical properties continuously"],
+      "cve_ids": ["CVE-2025-AAAA"]
+    },
+    {
+      "id": "HW-SEC-2025-003",
+      "type": "power_analysis",
+      "severity": "MEDIUM",
+      "threat_score": 0.5,
+      "affected_hardware": ["Edge computing devices"],
+      "description": "Power consumption analysis revealing cryptographic operation patterns",
+      "detected_date": "2025-09-22",
+      "ongoing": true,
+      "impact_on_qkd": "LOW",
+      "impact_on_crypto": "MEDIUM",
+      "mitigations": ["Implement power consumption randomization", "Regular security audits"],
+      "cve_ids": []
+    }
+  ],
+  "hardware_security_score": {
+    "x86_64_servers": 0.7,
+    "arm64_servers": 0.6,
+    "edge_devices": 0.5,
+    "quantum_safes": 0.2,
+    "hsm_devices": 0.3
+  },
+  "trends": {
+    "side_channel_increase": "15%",
+    "supply_chain_attacks": "8%",
+    "rng_weaknesses": "12%"
+  },
+  "global_hardware_threat_level": "HIGH",
+  "next_update": "2025-10-07T12:00:00Z"
+}

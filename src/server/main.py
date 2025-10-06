@@ -278,8 +278,8 @@ def list_tenants(request: Request):
 @app.get("/analytics/usage")
 def get_analytics_usage(request: Request):
     """
-    LTS Analytics usage endpoint.
-    Read-only, admin-authenticated. Returns aggregated multi-tenant metrics.
+    LTS Analytics usage endpoint with QASP v2.0 autonomous orchestration state.
+    Read-only, admin-authenticated. Returns aggregated multi-tenant metrics plus policy state.
     """
     # Simulate admin authentication (in real, check token)
     admin_header = request.headers.get("x-admin-auth")
@@ -288,7 +288,25 @@ def get_analytics_usage(request: Request):
 
     collector = LTSMetricsCollector()
     data = collector.collect_usage_stats()
-    return {"usage_stats": data}
+
+    # QASP v2.0: Add autonomous orchestration policy state
+    policy_state = {}
+    try:
+        from src.orchestration.adaptive_controller import AdaptiveController
+        from src.ai_threat.policy_agent import PolicyAgent
+        controller = AdaptiveController(
+            policy_agent=PolicyAgent(),
+            metrics_collector=collector
+        )
+        policy_state = controller.get_current_policy_state()
+    except Exception as e:
+        logger.warning(f"Could not load policy state: {e}")
+
+    response = {
+        "usage_stats": data,
+        "policy_state": policy_state
+    }
+    return response
 
 @app.post("/research/submit")
 async def submit_research_metrics(request: Request):

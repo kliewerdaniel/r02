@@ -1,0 +1,79 @@
+{
+  "metadata": {
+    "feed_name": "Network Security Events",
+    "version": "2025.4",
+    "last_updated": "2025-10-06T12:00:00Z",
+    "source": "CERT Coordination Center",
+    "description": "Real-time feed of network-related security events and DDoS patterns affecting secure communications"
+  },
+  "network_events": [
+    {
+      "id": "NET-EVT-2025-001",
+      "type": "ddos_amplification",
+      "severity": "CRITICAL",
+      "threat_score": 0.9,
+      "target_protocols": ["UDP", "QKD signaling"],
+      "description": "Large-scale DDoS amplification attack targeting quantum-safe protocols",
+      "start_date": "2025-09-28T14:30:00Z",
+      "end_date": "2025-09-28T18:45:00Z",
+      "ongoing": false,
+      "traffic_volume": "250Gbps",
+      "affected_regions": ["Europe", "North America"],
+      "impact_on_crypto": "HIGH",
+      "impact_on_qkd": "CRITICAL",
+      "mitigations": ["Enable rate limiting", "Implement DDoS protection services", "Monitor QKD signaling traffic"]
+    },
+    {
+      "id": "NET-EVT-2025-002",
+      "type": "man_in_the_middle",
+      "severity": "HIGH",
+      "threat_score": 0.75,
+      "target_protocols": ["TLS 1.3", "PQC key exchange"],
+      "description": "Sophisticated MITM attack intercepting quantum-safe handshakes",
+      "start_date": "2025-09-30T09:15:00Z",
+      "end_date": null,
+      "ongoing": true,
+      "detection_rate": "0.02%",
+      "affected_networks": ["Corporate VPNs", "Financial institutions"],
+      "impact_on_crypto": "HIGH",
+      "impact_on_qkd": "MEDIUM",
+      "mitigations": ["Implement certificate pinning", "Use quantum key distribution", "Enhanced traffic analysis"]
+    },
+    {
+      "id": "NET-EVT-2025-003",
+      "type": "routing_attack",
+      "severity": "MEDIUM",
+      "threat_score": 0.6,
+      "target_protocols": ["BGP", "MPLS"],
+      "description": "Prefix hijacking affecting secure routing for quantum-safe communications",
+      "start_date": "2025-10-02T16:20:00Z",
+      "end_date": "2025-10-03T02:10:00Z",
+      "ongoing": false,
+      "hijacked_prefixes": 15,
+      "affected_asns": ["AS64512", "AS64513"],
+      "impact_on_crypto": "MEDIUM",
+      "impact_on_qkd": "LOW",
+      "mitigations": ["Implement route origin validation", "BGPsec deployment", "RPKI verification"]
+    }
+  ],
+  "network_security_metrics": {
+    "ddos_attempts_per_day": 45000,
+    "successful_mitm_attacks": 23,
+    "routing_anomalies": 89,
+    "false_positives": 0.15
+  },
+  "geographic_threat_distribution": {
+    "north_america": 0.8,
+    "europe": 0.7,
+    "asia_pacific": 0.6,
+    "latin_america": 0.4,
+    "middle_east": 0.5
+  },
+  "protocol_vulnerability_trends": {
+    "qkd_protocols": "INCREASING",
+    "pqc_protocols": "STABLE",
+    "classical_crypto": "DECREASING"
+  },
+  "global_network_threat_level": "CRITICAL",
+  "next_update": "2025-10-06T13:00:00Z"
+}

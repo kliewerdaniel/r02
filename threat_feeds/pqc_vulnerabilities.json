@@ -1,0 +1,59 @@
+{
+  "metadata": {
+    "feed_name": "PQC Vulnerabilities Feed",
+    "version": "2025.3",
+    "last_updated": "2025-10-06T12:00:00Z",
+    "source": "NIST PQC Security Team",
+    "description": "Real-time feed of Post-Quantum Cryptography vulnerabilities and security advisories"
+  },
+  "vulnerabilities": [
+    {
+      "id": "NIST-PQC-2025-001",
+      "algorithm": "Kyber512",
+      "severity": "MEDIUM",
+      "threat_score": 0.6,
+      "description": "Timing attack vulnerability in constant-time implementation",
+      "discovered_date": "2025-09-15",
+      "mitigated": false,
+      "recommendations": ["Upgrade to Kyber768 or Kyber1024", "Enable constant-time countermeasures"],
+      "cve_ids": ["CVE-2025-XXXX"]
+    },
+    {
+      "id": "NIST-PQC-2025-002",
+      "algorithm": "Dilithium2",
+      "severity": "HIGH",
+      "threat_score": 0.8,
+      "description": "Signature forgery vulnerability when combined with certain classical attacks",
+      "discovered_date": "2025-09-20",
+      "mitigated": true,
+      "recommendations": ["Upgrade to Dilithium3 or Dilithium5", "Implement signature verification hardening"],
+      "cve_ids": ["CVE-2025-YYYY"]
+    },
+    {
+      "id": "NIST-PQC-2025-003",
+      "algorithm": "Falcon-512",
+      "severity": "LOW",
+      "threat_score": 0.3,
+      "description": "Performance degradation under specific parameter combinations",
+      "discovered_date": "2025-09-25",
+      "mitigated": false,
+      "recommendations": ["Monitor performance metrics", "Consider algorithm rotation alternatives"],
+      "cve_ids": []
+    }
+  ],
+  "algorithm_risk_scores": {
+    "Kyber512": 0.4,
+    "Kyber768": 0.2,
+    "Kyber1024": 0.1,
+    "FrodoKEM-640-AES": 0.3,
+    "FrodoKEM-976-AES": 0.2,
+    "FrodoKEM-1344-AES": 0.1,
+    "Dilithium2": 0.7,
+    "Dilithium3": 0.3,
+    "Dilithium5": 0.1,
+    "Falcon-512": 0.2,
+    "Falcon-1024": 0.1
+  },
+  "global_threat_level": "MEDIUM",
+  "next_update": "2025-10-13T12:00:00Z"
+}
