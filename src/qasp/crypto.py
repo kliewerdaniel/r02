@@ -8,11 +8,12 @@ from .hsm.abstract_store import KeyStoreABC
 from .config.crypto_config import get_kem_algorithm, get_signature_algorithm
 
 class PQCKEM:
-    def __init__(self, keystore: Optional[KeyStoreABC] = None, client_id: Optional[str] = None):
+    def __init__(self, keystore: Optional[KeyStoreABC] = None, client_id: Optional[str] = None, tenant_id: Optional[str] = None):
         self.kem = oqs.KeyEncapsulation(get_kem_algorithm())
         self.public_bytes = None
         self.keystore = keystore
         self.client_id = client_id
+        self.tenant_id = tenant_id or "default"  # default tenant for backwards compatibility
 
     def generate_keypair(self) -> bytes:
         self.public_bytes = self.kem.generate_keypair()
@@ -20,7 +21,7 @@ class PQCKEM:
             try:
                 # Export the secret key and store in keystore for persistence
                 secret_key = self.kem.export_secret_key()
-                self.keystore.store_private_key(self.client_id, 'kem', secret_key)
+                self.keystore.store_private_key(self.tenant_id, self.client_id, 'kem', secret_key)
             except AttributeError:
                 # If export_secret_key not available, skip HSM storage
                 pass
@@ -40,17 +41,18 @@ class PQCKEM:
         return self.public_bytes
 
 class PQCSign:
-    def __init__(self, keystore: Optional[KeyStoreABC] = None, client_id: Optional[str] = None):
+    def __init__(self, keystore: Optional[KeyStoreABC] = None, client_id: Optional[str] = None, tenant_id: Optional[str] = None):
         self.sig = oqs.Signature(get_signature_algorithm())
         self.public_bytes = None
         self._private_key = None
         self.keystore = keystore
         self.client_id = client_id
+        self.tenant_id = tenant_id or "default"  # default tenant for backwards compatibility
 
     def generate_keypair(self) -> bytes:
         self.public_bytes, self._private_key = self.sig.generate_keypair()
         if self.keystore and self.client_id:
-            self.keystore.store_private_key(self.client_id, 'sign', self._private_key)
+            self.keystore.store_private_key(self.tenant_id, self.client_id, 'sign', self._private_key)
         return self.public_bytes
 
     def sign(self, message: bytes) -> bytes:

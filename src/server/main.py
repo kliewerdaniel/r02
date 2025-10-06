@@ -28,7 +28,7 @@ from src.config.crypto_config import validate_crypto_config
 validate_crypto_config()
 logger.info("Crypto configuration validated successfully")
 
-app = FastAPI(title="QASP Server v0.1", version="0.1.0")
+app = FastAPI(title="QASP Server v0.2", version="0.2.0")
 
 # Initialize HSM keystore if enabled
 keystore = None
@@ -44,7 +44,7 @@ server_kem.generate_keypair()
 server_sign.generate_keypair()
 
 # In-memory stores for prototype
-_clients: Dict[str, Dict[str, bytes]] = {}  # client_id -> {"pub_kem": bytes, "pub_sig": bytes}
+_clients: Dict[str, Dict[str, Dict[str, bytes]]] = {}  # tenant_id -> client_id -> {"pub_kem": bytes, "pub_sig": bytes}
 _sessions: Dict[str, Dict] = {}  # session_token -> {"session_id": str, "expiry": float, "key": bytes}
 
 # QKD service URL
@@ -65,18 +65,22 @@ def get_public_keys():
     }
 
 @app.post("/qasp/register")
-async def register_client(client_id: str, request: Request):
+async def register_client(request: Request):
     """
     Register a client with their public keys (simulate out-of-band).
     In production, add admin authentication.
     """
     data = await request.json()
+    client_id = data.get("client_id")
+    tenant_id = data.get("tenant_id", "default")
     pub_kem_b64 = data.get("pub_kem")
     pub_sig_b64 = data.get("pub_sig")
-    if not pub_kem_b64 or not pub_sig_b64:
-        raise HTTPException(status_code=400, detail="Missing pub_kem or pub_sig")
+    if not client_id or not pub_kem_b64 or not pub_sig_b64:
+        raise HTTPException(status_code=400, detail="Missing client_id, pub_kem, or pub_sig")
 
-    _clients[client_id] = {
+    if tenant_id not in _clients:
+        _clients[tenant_id] = {}
+    _clients[tenant_id][client_id] = {
         "pub_kem": base64.b64decode(pub_kem_b64),
         "pub_sig": base64.b64decode(pub_sig_b64),
     }
@@ -92,6 +96,7 @@ async def initialize_session(request: Request):
         try:
             data = await request.json()
             client_id = data.get("client_id")
+            tenant_id = data.get("tenant_id", "default")
             kem_encaps_b64 = data.get("kem_encaps")
             client_nonce_b64 = data.get("client_nonce")
             supported_qkd = data.get("supported_qkd", False)
@@ -99,7 +104,7 @@ async def initialize_session(request: Request):
             if not client_id or not kem_encaps_b64 or not client_nonce_b64:
                 raise HTTPException(status_code=400, detail="Missing required fields")
 
-            if client_id not in _clients:
+            if tenant_id not in _clients or client_id not in _clients[tenant_id]:
                 raise HTTPException(status_code=404, detail="Client not registered")
 
             kem_encaps = base64.b64decode(kem_encaps_b64)
@@ -127,10 +132,11 @@ async def initialize_session(request: Request):
             session_id = str(uuid.uuid4())
             token_payload = {
                 "session_id": session_id,
-                "expiry": time.time() + SESSION_EXPIRY
+                "expiry": time.time() + SESSION_EXPIRY,
+                "tenant_id": tenant_id
             }
             payload_bytes = str(token_payload).encode()  # Simplify, in real use JSON dumps
-            token_nonce, token_ct = aead_encrypt(session_key, payload_bytes, b"session-token")
+            token_nonce, token_ct = aead_encrypt(session_key, payload_bytes, f"session-token-{tenant_id}".encode())
 
             session_token = base64.b64encode(token_nonce + token_ct).decode()
 
@@ -138,6 +144,7 @@ async def initialize_session(request: Request):
             _sessions[session_token] = {
                 "session_id": session_id,
                 "expiry": token_payload["expiry"],
+                "tenant_id": tenant_id,
                 "key": session_key
             }
 
@@ -150,13 +157,13 @@ async def initialize_session(request: Request):
                 security_event="handshake_success"
             )
 
-            HANDSHAKE_TOTAL.labels(result='success').inc()
+            HANDSHAKE_TOTAL.labels(result='success', tenant_id=tenant_id).inc()
             return {
                 "server_nonce": base64.b64encode(server_nonce).decode(),
                 "session_token": session_token
             }
         except Exception as e:
-            HANDSHAKE_TOTAL.labels(result='failure').inc()
+            HANDSHAKE_TOTAL.labels(result='failure', tenant_id=tenant_id).inc()
             logger.error(
                 "QASP session initialization failed",
                 client_id=data.get("client_id") if 'data' in locals() else None,
@@ -172,14 +179,15 @@ async def challenge_session(request: Request):
     """
     session_token = request.headers.get("x-qasp-session")
     if not session_token or session_token not in _sessions:
-        CHALLENGE_TOTAL.labels(result='failure').inc()
+        CHALLENGE_TOTAL.labels(result='failure', tenant_id='unknown').inc()
         logger.warning("Challenge attempted with invalid session token", security_event="challenge_unauthorized")
         raise HTTPException(status_code=401, detail="Invalid or missing session token")
 
     session = _sessions[session_token]
+    tenant_id = session.get("tenant_id", "unknown")
     if time.time() > session["expiry"]:
         del _sessions[session_token]
-        CHALLENGE_TOTAL.labels(result='failure').inc()
+        CHALLENGE_TOTAL.labels(result='failure', tenant_id=tenant_id).inc()
         logger.warning("Challenge attempted with expired session", session_id=session["session_id"], security_event="challenge_expired")
         raise HTTPException(status_code=401, detail="Session expired")
 
@@ -188,7 +196,7 @@ async def challenge_session(request: Request):
     challenge_ct_b64 = data.get("challenge_ciphertext")
 
     if not challenge_nonce_b64 or not challenge_ct_b64:
-        CHALLENGE_TOTAL.labels(result='failure').inc()
+        CHALLENGE_TOTAL.labels(result='failure', tenant_id=tenant_id).inc()
         logger.warning("Challenge request missing data", session_id=session["session_id"], security_event="challenge_invalid")
         raise HTTPException(status_code=400, detail="Missing challenge data")
 
@@ -199,11 +207,11 @@ async def challenge_session(request: Request):
         challenge_text = challenge_bytes.decode()
         if challenge_text != "challenge-test":
             raise Exception("Invalid challenge")
-        CHALLENGE_TOTAL.labels(result='success').inc()
+        CHALLENGE_TOTAL.labels(result='success', tenant_id=tenant_id).inc()
         logger.info("Challenge verified successfully", session_id=session["session_id"], security_event="challenge_success")
         return {"challenge_verified": True}
     except Exception as e:
-        CHALLENGE_TOTAL.labels(result='failure').inc()
+        CHALLENGE_TOTAL.labels(result='failure', tenant_id=tenant_id).inc()
         logger.error("Challenge verification failed", session_id=session["session_id"], error=str(e), security_event="challenge_failure")
         raise HTTPException(status_code=401, detail="Challenge verification failed")
 
@@ -214,21 +222,22 @@ def get_protected_resource(request: Request):
     """
     session_token = request.headers.get("x-qasp-session")
     if not session_token or session_token not in _sessions:
-        RESOURCE_ACCESS_TOTAL.labels(result='failure').inc()
+        RESOURCE_ACCESS_TOTAL.labels(result='failure', tenant_id='unknown').inc()
         logger.warning("Protected resource access attempted with invalid session", security_event="resource_unauthorized")
         raise HTTPException(status_code=401, detail="Invalid or missing session token")
 
     session = _sessions[session_token]
+    tenant_id = session.get("tenant_id", "unknown")
     if time.time() > session["expiry"]:
         del _sessions[session_token]
-        RESOURCE_ACCESS_TOTAL.labels(result='failure').inc()
+        RESOURCE_ACCESS_TOTAL.labels(result='failure', tenant_id=tenant_id).inc()
         logger.warning("Protected resource access attempted with expired session", session_id=session["session_id"], security_event="resource_expired")
         raise HTTPException(status_code=401, detail="Session expired")
 
-    response_plaintext = b"Hello, protected world from QASP v0.1"
+    response_plaintext = b"Hello, protected world from QASP v0.2"
     nonce, ct = aead_encrypt(session["key"], response_plaintext, b"response")
 
-    RESOURCE_ACCESS_TOTAL.labels(result='success').inc()
+    RESOURCE_ACCESS_TOTAL.labels(result='success', tenant_id=tenant_id).inc()
     logger.info("Protected resource accessed successfully", session_id=session["session_id"], security_event="resource_access")
 
     return {
@@ -248,6 +257,15 @@ def list_keys(request: Request):
     keys = keystore.list_keys()
     KEY_OPERATIONS_TOTAL.labels(operation='list', result='success').inc()
     return {"keys": keys}
+
+@app.get("/admin/tenants")
+def list_tenants(request: Request):
+    """
+    Admin endpoint to list all tenants.
+    Requires admin mode; returns list of tenant_ids.
+    """
+    tenants = list(_clients.keys())
+    return {"tenants": tenants}
 
 @app.get("/metrics")
 def metrics_endpoint():

@@ -23,21 +23,21 @@ HANDSHAKE_DURATION = Histogram(
 HANDSHAKE_TOTAL = Counter(
     'qasp_handshakes_total',
     'Total number of QASP handshakes',
-    ['result'],  # success, failure
+    ['result', 'tenant_id'],  # success, failure; tenant_id for isolation
     registry=registry
 )
 
 CHALLENGE_TOTAL = Counter(
     'qasp_challenges_total',
     'Total number of QASP challenge verifications',
-    ['result'],  # success, failure
+    ['result', 'tenant_id'],  # success, failure; tenant_id for isolation
     registry=registry
 )
 
 RESOURCE_ACCESS_TOTAL = Counter(
     'qasp_resource_access_total',
     'Total number of protected resource accesses',
-    ['result'],  # success, failure
+    ['result', 'tenant_id'],  # success, failure; tenant_id for isolation
     registry=registry
 )
 

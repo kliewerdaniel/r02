@@ -40,7 +40,7 @@ class MockHSM(KeyStoreABC):
 
     def __init__(self):
         """Initialize the mock HSM with AES-GCM encryption."""
-        self._vault: Dict[str, bytes] = {}  # key_id -> encrypted_data
+        self._vault: Dict[str, Dict[str, bytes]] = {}  # tenant_id -> {key_id -> encrypted_data}
         self._master_key = self._derive_master_key()
         self._aesgcm = AESGCM(self._master_key)
 
@@ -69,7 +69,7 @@ class MockHSM(KeyStoreABC):
         """Generate a unique key identifier."""
         return f"{client_id}:{key_type}"
 
-    def store_private_key(self, client_id: str, key_type: str, key_bytes: bytes) -> bool:
+    def store_private_key(self, tenant_id: str, client_id: str, key_type: str, key_bytes: bytes) -> bool:
         """
         Store a private key encrypted at rest.
 
@@ -77,6 +77,7 @@ class MockHSM(KeyStoreABC):
         The nonce is prepended to the encrypted data for storage.
 
         Args:
+            tenant_id: Unique identifier for the tenant
             client_id: Unique identifier for the client
             key_type: Type of key ('kem' or 'sign')
             key_bytes: The private key data as bytes
@@ -93,11 +94,14 @@ class MockHSM(KeyStoreABC):
 
             # Store nonce + encrypted data as a single blob
             key_id = self._generate_key_id(client_id, key_type)
-            self._vault[key_id] = nonce + encrypted_data
+            if tenant_id not in self._vault:
+                self._vault[tenant_id] = {}
+            self._vault[tenant_id][key_id] = nonce + encrypted_data
 
             logger.info(
                 f"Private key stored successfully",
                 extra={
+                    "tenant_id": tenant_id,
                     "client_id": client_id,
                     "key_type": key_type,
                     "key_size": len(key_bytes),
@@ -110,6 +114,7 @@ class MockHSM(KeyStoreABC):
             logger.error(
                 f"Failed to store private key for client {client_id}",
                 extra={
+                    "tenant_id": tenant_id,
                     "client_id": client_id,
                     "key_type": key_type,
                     "error": str(e),
@@ -118,11 +123,12 @@ class MockHSM(KeyStoreABC):
             )
             return False
 
-    def get_private_key(self, client_id: str, key_type: str) -> Optional[bytes]:
+    def get_private_key(self, tenant_id: str, client_id: str, key_type: str) -> Optional[bytes]:
         """
         Retrieve and decrypt a private key.
 
         Args:
+            tenant_id: Unique identifier for the tenant
             client_id: Unique identifier for the client
             key_type: Type of key ('kem' or 'sign')
 
@@ -131,10 +137,11 @@ class MockHSM(KeyStoreABC):
         """
         key_id = self._generate_key_id(client_id, key_type)
 
-        if key_id not in self._vault:
+        if tenant_id not in self._vault or key_id not in self._vault[tenant_id]:
             logger.warning(
                 f"Private key not found",
                 extra={
+                    "tenant_id": tenant_id,
                     "client_id": client_id,
                     "key_type": key_type,
                     "security_event": "key_retrieval_not_found"
@@ -143,7 +150,7 @@ class MockHSM(KeyStoreABC):
             return None
 
         try:
-            data = self._vault[key_id]
+            data = self._vault[tenant_id][key_id]
 
             # Extract nonce and encrypted data
             nonce = data[:12]
@@ -155,6 +162,7 @@ class MockHSM(KeyStoreABC):
             logger.info(
                 f"Private key retrieved successfully",
                 extra={
+                    "tenant_id": tenant_id,
                     "client_id": client_id,
                     "key_type": key_type,
                     "key_size": len(decrypted_key),
@@ -167,6 +175,7 @@ class MockHSM(KeyStoreABC):
             logger.error(
                 f"Failed to retrieve and decrypt private key for client {client_id}",
                 extra={
+                    "tenant_id": tenant_id,
                     "client_id": client_id,
                     "key_type": key_type,
                     "error": str(e),
@@ -175,22 +184,26 @@ class MockHSM(KeyStoreABC):
             )
             return None
 
-    def list_keys(self) -> List[Dict[str, str]]:
+    def list_keys(self, tenant_id: str) -> List[Dict[str, str]]:
         """
-        List all stored keys.
+        List all stored keys for a given tenant.
+
+        Args:
+            tenant_id: Unique identifier for the tenant
 
         Returns:
             List of dictionaries with 'client_id' and 'key_type' for each key
         """
         keys = []
-        for key_id in self._vault:
-            client_id, key_type = key_id.split(":", 1)
-            keys.append({"client_id": client_id, "key_type": key_type})
+        if tenant_id in self._vault:
+            for key_id in self._vault[tenant_id]:
+                client_id, key_type = key_id.split(":", 1)
+                keys.append({"client_id": client_id, "key_type": key_type})
 
-        logger.info(f"Key listing requested: {len(keys)} keys found")
+        logger.info(f"Key listing requested for tenant {tenant_id}: {len(keys)} keys found")
         return keys
 
-    def rotate_key(self, client_id: str, key_type: str) -> bool:
+    def rotate_key(self, tenant_id: str, client_id: str, key_type: str) -> bool:
         """
         Rotate an existing private key.
 
@@ -201,6 +214,7 @@ class MockHSM(KeyStoreABC):
         In a real HSM implementation, this would handle key generation internally.
 
         Args:
+            tenant_id: Unique identifier for the tenant
             client_id: Unique identifier for the client
             key_type: Type of key to rotate ('kem' or 'sign')
 
@@ -210,6 +224,7 @@ class MockHSM(KeyStoreABC):
         logger.warning(
             "Key rotation not supported by MockHSM implementation",
             extra={
+                "tenant_id": tenant_id,
                 "client_id": client_id,
                 "key_type": key_type,
                 "security_event": "key_rotation_denied"

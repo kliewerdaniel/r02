@@ -2,6 +2,8 @@ CI skeleton (conceptual)
 •	jobs:
 •	lint
 •	unit-tests
+•	conformance-tests
+•	formal-trace-export (run tests and export trace_log.json artifact)
 •	pqc-compat-check (run pqc integration tests / size/perf)
 •	security-scan
 •	deploy-staging

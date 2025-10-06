@@ -10,7 +10,8 @@
 **Repo layout (created by CLIne)**
 - `README.md` (this file)
 - `API_SPEC.md` (OpenAPI skeleton + QASP security scheme)
-- `docs/SECURITY.md`, `docs/THREAT_MODEL.md`, `docs/QKD_DESIGN.md`, `docs/PQC_PLAN.md`
+- `docs/SECURITY.md`, `docs/THREAT_MODEL.md`, `docs/QKD_DESIGN.md`, `docs/PQC_PLAN.md`, `docs/FORMAL_VERIFICATION.md`
+- `specs/QASP_V0_2.md` (v0.2 specification)
 - `vibe_ledger/VIBE_LEDGER.md`
 - `specs/IMPLEMENTATION_GUIDE.md`, `specs/OPERATIONAL_RUNBOOK.md`
 - `templates/` (issue/PR templates)
@@ -54,9 +55,47 @@ Automated cryptographic audit in CI validates PQC algorithms:
 
 See `docs/AUDIT_PIPELINE.md` for detailed interpretation guide.
 
+## QASP v0.2 Interoperability Guide
+
+QASP v0.2 introduces multi-tenant isolation, cross-implementation compatibility, and formal verification support.
+
+### Key Features
+
+- **Multi-Tenant Isolation**: Keys and sessions partitioned by `tenant_id`
+- **Canonical JSON**: Deterministic message serialization for cross-language interoperability
+- **Formal Verification**: Trace logging for TLA+ and ProVerif analysis
+- **Client SDK**: Python SDK with interoperability functions
+
+### Migration from v0.1
+
+```bash
+# v0.1 clients are compatible with default tenant "default"
+# Add tenant_id to requests for v0.2 features
+curl -X POST http://localhost:8000/qasp/init \
+  -H "Content-Type: application/json" \
+  -d '{"client_id":"alice","tenant_id":"tenant1","kem_encaps":"...","client_nonce":"..."}'
+```
+
+### Interoperability Testing
+
+Use the client SDK for cross-implementation validation:
+
+```python
+from src.interop.qasp_interop import serialize_handshake, validate_message_schema
+
+# Validate message format
+message = {"type": "handshake_init", "client_id": "test"}
+assert validate_message_schema(message) == False  # Missing version (auto-added)
+
+serialized = serialize_handshake(message)
+assert '"qasp_version":"0.2"' in serialized
+```
+
+See `specs/QASP_V0_2.md` for complete specification and `docs/FORMAL_VERIFICATION.md` for verification guide.
+
 ## Next Steps
 
-Phase 2 (hardening) complete. Future phases:
+Phase 2 (hardening) complete. QASP v0.2 (interop/multitenant/formal-verification) ready for evaluation. Future phases:
 
 1. **Phase 3**: Real hardware integration (HSM, QRNG, QKD)
 2. **Phase 4**: Performance optimization and scaling

@@ -37,3 +37,39 @@ QASP supports runtime algorithm selection via environment variables:
 - `SIG_ALG`: Signature algorithm (default: Dilithium3, alternatives: Dilithium2, Dilithium5, Falcon variants)
 
 Algorithms are validated at startup. Fallback to defaults if unsupported. This enables zero-downtime algorithm upgrades in response to advances in PQC research or security requirements.
+
+## Multi-Tenant Key Isolation (v0.2)
+
+QASP v0.2 implements strict multi-tenant key isolation with the following security controls:
+
+### Key Partitioning
+- **HSM Storage**: Keys are stored in tenant-specific namespaces (`tenant_id` prefix)
+- **Memory Isolation**: In-memory key stores partitioned by `tenant_id`
+- **Access Control**: No cross-tenant key access allowed
+
+### Session Security
+- **Token Binding**: Session tokens include encrypted `tenant_id` in payload
+- **AEAD Protection**: Associated data ("session-token-{tenant_id}") prevents tenant confusion attacks
+- **Isolation Enforcement**: Sessions scoped to tenant namespace
+
+### Audit & Monitoring
+- **Tenant Labels**: All metrics and logs include `tenant_id` for per-tenant observability
+- **Audit Trails**: Key operations logged with tenant context
+- **Compliance**: Multi-tenant operations auditable per tenant
+
+### API Protections
+- **Client Partitioning**: Public keys stored per tenant (`_clients[tenant_id][client_id]`)
+- **Middleware Verification**: Request signatures verified within tenant scope
+- **Endpoint Isolation**: Admin endpoints secured against cross-tenant access
+
+### Threats Mitigated
+- **Tenant Confusion**: Explicit tenant ID in all contexts prevents misrouting
+- **Key Leakage**: Tenant-scoped HSM prevents cross-tenant key compromise
+- **Session Hijacking**: Token binding prevents tenant impersonation
+- **Data Exfiltration**: Isolated metrics/logs limit information disclosure
+
+### Implementation Notes
+- Default tenant `"default"` maintains backward compatibility with v0.1
+- All cryptographic operations include tenant context
+- Middleware automatically extracts `tenant_id` from headers or request bodies
+- HSM interface extended to require tenant parameter for all operations

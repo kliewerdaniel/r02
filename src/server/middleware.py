@@ -76,7 +76,7 @@ def rate_limit_middleware(client_id: Optional[str] = None) -> Callable:
     return middleware
 
 
-def request_signature_middleware(clients_store: Dict[str, Dict[str, bytes]]) -> Callable:
+def request_signature_middleware(clients_store: Dict[str, Dict[str, Dict[str, bytes]]]) -> Callable:
     """
     Request signing middleware for replay attack protection.
 
@@ -85,7 +85,7 @@ def request_signature_middleware(clients_store: Dict[str, Dict[str, bytes]]) -> 
     computed as: base64(Sign(SHA256(request_body), client_private_key))
 
     Args:
-        clients_store: Dictionary of client_id -> {"pub_sig": bytes}
+        clients_store: Dictionary of tenant_id -> client_id -> {"pub_sig": bytes}
 
     Returns:
         Middleware function
@@ -95,16 +95,30 @@ def request_signature_middleware(clients_store: Dict[str, Dict[str, bytes]]) -> 
         if request.url.path in ["/public-keys", "/metrics"]:
             return call_next(request)
 
-        # Get client_id from header or body
-        client_id = request.headers.get("x-qasp-client-id")
-        if not client_id:
+        # Get tenant_id from header or body
+        tenant_id = request.headers.get("x-qasp-tenant-id", "default")
+        if tenant_id == "default":
             # Try to parse from JSON body
             try:
                 import json
                 body = request.body()
                 if body:
                     data = json.loads(body.decode())
-                    client_id = data.get("client_id")
+                    tenant_id = data.get("tenant_id", tenant_id)
+            except:
+                pass
+
+        # Get client_id from header or body
+        client_id = request.headers.get("x-qasp-client-id")
+        if not client_id:
+            # Try to parse from JSON body
+            try:
+                import json
+                if 'body' not in locals():
+                    body = request.body()
+                if body and 'data' not in locals():
+                    data = json.loads(body.decode())
+                client_id = data.get("client_id")
             except:
                 pass
 
@@ -127,10 +141,11 @@ def request_signature_middleware(clients_store: Dict[str, Dict[str, bytes]]) -> 
             return call_next(request)
 
         # Verify signature
-        if client_id not in clients_store:
+        if tenant_id not in clients_store or client_id not in clients_store[tenant_id]:
             security_logger.warning(
                 "Signature verification failed: unknown client",
                 client_id=client_id,
+                tenant_id=tenant_id,
                 security_event="signature_unknown_client"
             )
             raise HTTPException(status_code=401, detail="Invalid client")
@@ -151,7 +166,7 @@ def request_signature_middleware(clients_store: Dict[str, Dict[str, bytes]]) -> 
             signature = base64.b64decode(signature_b64)
 
             # Get client's public key
-            client_pub_sig = clients_store[client_id]["pub_sig"]
+            client_pub_sig = clients_store[tenant_id][client_id]["pub_sig"]
 
             # Verify signature
             is_valid = PQCSign.verify(client_pub_sig, body_hash, signature)

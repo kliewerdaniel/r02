@@ -23,11 +23,12 @@ class KeyStoreABC(ABC):
     """
 
     @abstractmethod
-    def store_private_key(self, client_id: str, key_type: str, key_bytes: bytes) -> bool:
+    def store_private_key(self, tenant_id: str, client_id: str, key_type: str, key_bytes: bytes) -> bool:
         """
         Store a private key securely.
 
         Args:
+            tenant_id: Unique identifier for the tenant
             client_id: Unique identifier for the client
             key_type: Type of key ('kem' or 'sign')
             key_bytes: The private key data as bytes
@@ -38,11 +39,12 @@ class KeyStoreABC(ABC):
         pass
 
     @abstractmethod
-    def get_private_key(self, client_id: str, key_type: str) -> Optional[bytes]:
+    def get_private_key(self, tenant_id: str, client_id: str, key_type: str) -> Optional[bytes]:
         """
         Retrieve a private key.
 
         Args:
+            tenant_id: Unique identifier for the tenant
             client_id: Unique identifier for the client
             key_type: Type of key ('kem' or 'sign')
 
@@ -52,9 +54,12 @@ class KeyStoreABC(ABC):
         pass
 
     @abstractmethod
-    def list_keys(self) -> List[Dict[str, str]]:
+    def list_keys(self, tenant_id: str) -> List[Dict[str, str]]:
         """
-        List all stored keys.
+        List all stored keys for a given tenant.
+
+        Args:
+            tenant_id: Unique identifier for the tenant
 
         Returns:
             List of dictionaries with 'client_id' and 'key_type' for each key
@@ -62,7 +67,7 @@ class KeyStoreABC(ABC):
         pass
 
     @abstractmethod
-    def rotate_key(self, client_id: str, key_type: str) -> bool:
+    def rotate_key(self, tenant_id: str, client_id: str, key_type: str) -> bool:
         """
         Rotate an existing private key.
 
@@ -70,6 +75,7 @@ class KeyStoreABC(ABC):
         The implementation must ensure the old key is securely destroyed or invalidated.
 
         Args:
+            tenant_id: Unique identifier for the tenant
             client_id: Unique identifier for the client
             key_type: Type of key to rotate ('kem' or 'sign')
 
