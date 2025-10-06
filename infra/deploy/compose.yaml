@@ -1,0 +1,88 @@
+version: '3.8'
+
+services:
+  qasp-server:
+    image: qasp-server:latest
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+    ports:
+      - "${QASP_PORT:-8000}:8000"
+    environment:
+      - DATABASE_URL=${DATABASE_URL:-postgresql://qasp:password@postgres/qasp}
+      - HSM_TYPE=${HSM_TYPE:-mock}
+      - HSM_ENABLED=true
+      - MASTER_KEY=${MASTER_KEY}
+      - KEM_ALG=${KEM_ALG:-Kyber512}
+      - SIG_ALG=${SIG_ALG:-Dilithium3}
+      - PROMETHEUS_PORT=${PROMETHEUS_PORT:-9090}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - RATE_LIMIT_REQUESTS=${RATE_LIMIT_REQUESTS:-10}
+      - RATE_LIMIT_PERIOD=${RATE_LIMIT_PERIOD:-60}
+      - ENABLE_REQUEST_SIGNATURES=${ENABLE_REQUEST_SIGNATURES:-true}
+      - DEFAULT_TENANT_ID=${DEFAULT_TENANT_ID:-default}
+      - KEY_ROTATION_ENABLED=${KEY_ROTATION_ENABLED:-true}
+      - KEY_ROTATION_INTERVAL_HOURS=${KEY_ROTATION_INTERVAL_HOURS:-24}
+      - AWS_REGION=${AWS_REGION}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - KMS_KEY_ID=${KMS_KEY_ID}
+      - VAULT_ADDR=${VAULT_ADDR}
+      - VAULT_TOKEN=${VAULT_TOKEN}
+    depends_on:
+      - postgres
+      - prometheus
+    volumes:
+      - qasp_logs:/app/logs
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_DB=qasp
+      - POSTGRES_USER=qasp
+      - POSTGRES_PASSWORD=password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U qasp"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "${PROMETHEUS_PORT:-9090}:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+
+  mock-hsm:
+    image: qasp-server:latest
+    environment:
+      - HSM_TYPE=external
+      - HSM_ENABLED=true
+    command: ["python", "-m", "src.hsm.mock_hsm", "serve", "--port", "8888"]
+    ports:
+      - "8888:8888"
+    volumes:
+      - hsm_data:/app/hsm
+
+volumes:
+  postgres_data:
+  prometheus_data:
+  qasp_logs:
+  hsm_data:

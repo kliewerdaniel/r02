@@ -1,0 +1,80 @@
+version: "1.0"
+title: "QASP v1.0 External Audit Checklist"
+description: "Compliance controls map for ISO/IEC 23837, NIST SP 800-208, and ENISA PQC recommendations"
+
+controls:
+  - id: "qkd-device-integrity"
+    category: "Hardware"
+    standard: "ISO/IEC 23837"
+    description: "QKD hardware device integrity and authentication"
+    checks:
+      - "Verify vendor signature on firmware"
+      - "Check QKD link establishment protocols"
+      - "Validate device identity certificates"
+    automated: true
+
+  - id: "pqc-algorithm-validation"
+    category: "Cryptography"
+    standard: "NIST SP 800-208"
+    description: "Post-quantum cryptographic algorithm selection and parameter validation"
+    checks:
+      - "Confirm use of NIST-selected algorithms (Kyber, Dilithium)"
+      - "Validate algorithm parameters match FIPS 203/204"
+      - "Check parameter sets for security strength (Level 3+)"
+    automated: true
+
+  - id: "key-storage-security"
+    category: "Key Management"
+    standard: "NIST SP 800-57"
+    description: "Secure key storage in HSM/KMS"
+    checks:
+      - "Verify HSM-enabled configuration"
+      - "Check key rotation policies"
+      - "Validate access controls on key material"
+    automated: true
+
+  - id: "tls-cert-validation"
+    category: "Transport Security"
+    standard: "RFC 5246"
+    description: "TLS certificate validation for client authentication"
+    checks:
+      - "Check certificate chain validation"
+      - "Verify FIPS mode for TLS cipher suites"
+      - "Validate certificate revocation checking"
+    automated: false
+
+  - id: "audit-log-integrity"
+    category: "Audit & Monitoring"
+    standard: "ISO 27001"
+    description: "Audit log integrity and retention"
+    checks:
+      - "Verify log encryption and tamper-protection"
+      - "Check log retention policies (90 days min)"
+      - "Validate log correlation capabilities"
+    automated: false
+
+  - id: "qkd-failover-mechanism"
+    category: "Resilience"
+    standard: "ENISA PQC Guidelines"
+    description: "QKD hardware failure fallback to PQC-only mode"
+    checks:
+      - "Test automatic fallback on QKD outage"
+      - "Verify seamless degradation logging"
+      - "Check alerting for QKD hardware failures"
+    automated: true
+
+  - id: "performance-thresholds"
+    category: "Performance"
+    standard: "QASP Specification"
+    description: "Performance thresholds for handshake operations"
+    checks:
+      - "Average handshake latency ≤ 500ms"
+      - "Error rate < 0.5% for handshakes"
+      - "Concurrent session handling (1000+)"
+    automated: true
+
+remediation_guide:
+  warnings_as_errors: false
+  fail_on_missing_checks: true
+  report_format: json
+  output_path: "reports/audit_report_v1_0.json"

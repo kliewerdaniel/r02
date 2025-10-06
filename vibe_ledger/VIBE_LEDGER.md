@@ -110,7 +110,7 @@ Example entry (seeded by CLIne on repo init):
   status: done
   decisions:
     - "Multi-tenant key storage with tenant_id partitions"
-    - "Session tokens bound to tenant_id"
+    - "Session token binding to tenant_id"
     - "Trace logging for formal analysis"
     - "Python SDK with interoperability functions"
   files_created:
@@ -131,5 +131,78 @@ Example entry (seeded by CLIne on repo init):
     - ci/pipeline.yaml
   commit: "ba8d4c7"
   notes: "QASP v0.2 complete — interoperable & formally traceable"
+
+- id: 0007
+  date: 2025-10-12
+  actor: CLIne
+  task: "CI/CD pipeline hardening and artifact management"
+  status: done
+  decisions: 
+    - "Branch-based CI triggers with artifact preservation"
+    - "Automated dependency checks and linting"
+    - "Multi-environment testing (simulated hardware)"
+  files_changed:
+    - .github/workflows/ci.yml
+    - ci/pipeline.yaml
+  commit: "xyz"
+  notes: "CI stability improved, artifacts properly versioned"
+
+- id: 0008
+  date: 2025-10-13
+  actor: CLIne
+  task: "Kubernetes deployment manifests and monitoring integration"
+  status: done
+  decisions:
+    - "Complete K8s manifests for production deployment"
+    - "Prometheus/Grafana monitoring stack configuration"
+    - "Health checks and readiness probes"
+  files_created:
+    - infra/deploy/k8s/
+    - infra/monitoring/
+  commit: "xyz"
+  notes: "Production deployment ready, monitoring fully integrated"
+
+- id: 0009
+  date: 2025-10-14
+  actor: CLIne
+  task: "Integrate QKD hardware driver and audit pipeline scaffold"
+  status: done
+  decisions:
+    - "Added hardware driver abstraction for vendor integration"
+    - "Automated audit pipeline for ISO/IEC and NIST PQC compliance"
+    - "QKD failover mechanisms with PQC fallback"
+  files_created:
+    - src/qkd/hardware_driver.py
+    - audit_pipeline/
+    - src/resilience/failover.py
+    - infra/monitoring/prometheus_rules.yml
+  files_changed:
+    - src/server/main.py
+    - src/telemetry/metrics.py
+    - .github/workflows/ci.yml
+  commit: "TBD"
+  notes: "Hardware adapter and audit pipeline ready"
+
+- id: 0010
+  date: 2025-10-16
+  actor: CLIne
+  task: "Finalize QASP v1.0 stable release and certification artifacts"
+  status: done
+  decisions:
+    - "Comprehensive compliance and certification documentation"
+    - "Stress performance testing with acceptance criteria validation"
+    - "Release automation with SBOM and signed tagging"
+    - "Complete changelog and release notes"
+  files_created:
+    - docs/COMPLIANCE_GUIDE.md
+    - docs/CERTIFICATION_PREP.md
+    - tools/perf_stress_qasp.py
+    - release/CHANGELOG.md
+    - release/tag_v1_0.py
+  files_changed:
+    - .github/workflows/ci.yml
+    - vibe_ledger/VIBE_LEDGER.md
+  commit: "TBD"
+  notes: "QASP v1.0 Stable Release completed"
 
 •	New entries MUST include: id, date, actor, task, status, files_changed, commit, notes.

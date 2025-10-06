@@ -1,0 +1,95 @@
+groups:
+  - name: qasp.alerts
+    rules:
+      # QKD Hardware Alerts
+      - alert: QKDHardwareDown
+        expr: qasp_qkd_status{status="failed"} == 1
+        for: 5m
+        labels:
+          severity: critical
+          service: qkd
+          team: security
+        annotations:
+          summary: "QKD hardware is down"
+          description: "QKD hardware driver has failed status for 5 minutes. System has likely failed over to PQC-only mode."
+          runbook_url: "https://github.com/kliewerdaniel/r02/docs/COMPLIANCE_GUIDE.md#qkd-failover-mechanism"
+
+      - alert: QKDHardwareDegraded
+        expr: qasp_qkd_status{status="degraded"} == 1
+        for: 2m
+        labels:
+          severity: warning
+          service: qkd
+          team: security
+        annotations:
+          summary: "QKD hardware is degraded"
+          description: "QKD hardware latency exceeds threshold. Monitor for potential failover."
+          runbook_url: "https://github.com/kliewerdaniel/r02/docs/COMPLIANCE_GUIDE.md#qkd-failover-mechanism"
+
+      - alert: QKDFailoverActivated
+        expr: increase(qasp_qkd_failover_events_total[5m]) > 0
+        labels:
+          severity: warning
+          service: qasp
+          team: security
+        annotations:
+          summary: "QKD failover activated"
+          description: "System has automatically failed over to PQC-only mode due to QKD hardware issues."
+          runbook_url: "https://github.com/kliewerdaniel/r02/docs/COMPLIANCE_GUIDE.md#qkd-failover-mechanism"
+
+      # Performance Alerts
+      - alert: HighHandshakeLatency
+        expr: histogram_quantile(0.95, rate(qasp_handshake_duration_seconds_bucket[10m])) > 0.5
+        for: 5m
+        labels:
+          severity: warning
+          service: qasp
+          team: performance
+        annotations:
+          summary: "High QASP handshake latency"
+          description: "95th percentile handshake latency exceeds 500ms threshold."
+
+      - alert: HighFailureRate
+        expr: rate(qasp_handshakes_total{result="failure"}[10m]) / rate(qasp_handshakes_total[10m]) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+          service: qasp
+          team: reliability
+        annotations:
+          summary: "High QASP handshake failure rate"
+          description: "Handshake failure rate exceeds 5% threshold."
+
+      # Security Alerts
+      - alert: RateLimitExceeded
+        expr: rate(qasp_handshakes_total{result="failure"}[5m]) > 10
+        labels:
+          severity: warning
+          service: qasp
+          team: security
+        annotations:
+          summary: "Potential rate limit or DoS attack"
+          description: "High rate of handshake failures detected, possible attack or system issue."
+
+      # System Health Alerts
+      - alert: ServerDown
+        expr: up{job="qasp-server"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: qasp
+          team: infrastructure
+        annotations:
+          summary: "QASP server is down"
+          description: "QASP server has been unreachable for 1 minute."
+
+      - alert: DatabaseDown
+        expr: up{job="postgres"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          service: postgres
+          team: infrastructure
+        annotations:
+          summary: "Database is down"
+          description: "PostgreSQL database has been unreachable for 2 minutes."

@@ -24,12 +24,46 @@ for QuantumSecureAPI.
 In production, the implementations in src/qasp/crypto.py will integrate with HSM/KMS for private key operations. The TODO comments in the code indicate where HSM calls should plug in (e.g., `store_priv_kem_in_hsm()` or `hs_m_kem_encapsulate()`). For QKD, replace the mock service in src/qkd/mock_qkd.py with actual hardware providers exposing REST APIs or direct hardware interfaces. Ensure QKD keys are handled only in volatile memory and never logged in plaintext.
 
 ## HSM Integration & Operational Security Controls
-Private PQC keys are stored encrypted at rest using AES-GCM in the HSM keystore (src/hsm/mock_hsm.py). The master key is derived from the HSM_MASTER_SECRET environment variable. Key operations are logged with INFO and SECURITY levels for audit trails.
 
-- **Key Storage**: Private keys are encrypted with unique nonces and stored in memory.
+### Mock HSM (Development)
+Private PQC keys are stored encrypted at rest using AES-GCM in the database-backed HSM keystore (src/hsm/mock_hsm.py). The master key is derived from the HSM_MASTER_SECRET environment variable. Key operations are logged with INFO and SECURITY levels for audit trails.
+
+- **Key Storage**: Private keys are encrypted with unique nonces and stored persistently in database.
 - **Key Retrieval**: On-demand decryption for cryptographic operations.
 - **Audit Logging**: All key operations include security event IDs and structured logging.
-- **Access Control**: Keys are scoped by client_id and key_type (kem/sign).
+- **Access Control**: Keys are scoped by tenant_id, client_id and key_type (kem/sign).
+
+### Production KMS Adapters
+
+QASP v1.0 supports production-grade KMS/HSM integrations for enterprise deployments:
+
+#### AWS KMS Adapter (src/hsm/adapters/aws_kms.py)
+- **Envelope Encryption**: Uses AWS KMS for data key encryption with AES-256-GCM
+- **Key Management**: Data encryption keys (DEKs) generated and managed by KMS
+- **Configuration**: Requires AWS_REGION, KMS_KEY_ID, and AWS credentials
+- **Security**: Keys never leave AWS infrastructure; all operations logged in CloudTrail
+- **Prerequisites**: boto3 library (`pip install boto3`), KMS key with encrypt/decrypt permissions
+
+#### HashiCorp Vault Adapter (src/hsm/adapters/hashicorp_vault.py)
+- **Transit Engine**: Uses Vault's transit secrets engine for cryptographic operations
+- **Envelope Encryption**: Data keys encrypted using Vault-managed keys
+- **Configuration**: Requires VAULT_ADDR, VAULT_TOKEN environment variables
+- **Security**: All cryptographic operations performed within Vault; supports key rotation
+- **Prerequisites**: hvac library (`pip install hvac`), Vault with transit engine enabled
+
+#### Production Deployment Patterns
+1. **HSM Selection**: Choose KMS based on infrastructure (AWS KMS for AWS, Vault for multi-cloud)
+2. **Key Rotation**: Configure automatic key rotation policies in KMS/HSM
+3. **Access Control**: Use IAM roles/policies (AWS) or Vault policies for fine-grained access
+4. **Backup & Recovery**: Ensure KMS key backup procedures are documented
+5. **Compliance**: All KMS operations are auditable and meet regulatory requirements
+
+#### Security Considerations for Production
+- **Network Security**: Use TLS for all KMS communications
+- **Authentication**: Use IAM roles or Vault tokens with minimal required permissions
+- **Key Policies**: Implement least-privilege access to KMS keys
+- **Monitoring**: Enable CloudTrail (AWS) or audit logs (Vault) for all operations
+- **Failover**: Consider multi-region KMS deployments for high availability
 
 ## Crypto Agility Policy
 QASP supports runtime algorithm selection via environment variables:

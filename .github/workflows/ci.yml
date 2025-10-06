@@ -1,9 +1,12 @@
 name: CI
 on:
   push:
-    branches: [ main, vibe/dev/initial-implementation ]
+    branches: [ main, vibe/dev/initial-implementation, vibe/dev/qasp-v1.0-stable ]
   pull_request:
     branches: [ main ]
+  schedule:
+    # Run weekly audit on main branch
+    - cron: '0 0 * * 1'
 
 jobs:
   lint:
@@ -93,3 +96,64 @@ jobs:
         with:
           name: crypto-audit-report
           path: crypto_audit_report.txt
+
+  external-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      - name: Install build dependencies
+        run: sudo apt-get update && sudo apt-get install -y cmake gcc make libssl-dev
+      - name: Install dependencies
+        run: pip install -r requirements.txt pyyaml
+      - name: Run external compliance audit
+        env:
+          HSM_ENABLED: true
+          QKD_HARDWARE_ENABLED: true
+          QKD_MODE: simulated
+        run: python audit_pipeline/generate_audit_report.py
+      - name: Upload audit report
+        uses: actions/upload-artifact@v3
+        with:
+          name: external-audit-report
+          path: audit_pipeline/reports/audit_report_v1_0.json
+
+  stress-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      - name: Install build dependencies
+        run: sudo apt-get update && sudo apt-get install -y cmake gcc make libssl-dev
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Start QASP server
+        run: |
+          python src/server/main.py &
+          SERVER_PID=$!
+          echo "SERVER_PID=$SERVER_PID" >> $GITHUB_ENV
+          sleep 5
+      - name: Run stress performance test
+        env:
+          HSM_ENABLED: true
+          QKD_HARDWARE_ENABLED: false
+        run: python tools/perf_stress_qasp.py --clients 100 --max-concurrent 50 --output-dir reports
+      - name: Stop QASP server
+        run: |
+          kill $SERVER_PID || true
+      - name: Upload performance report
+        uses: actions/upload-artifact@v3
+        with:
+          name: stress-test-report
+          path: reports/perf_v1_0_stable.json
+      - name: Upload Grafana export
+        uses: actions/upload-artifact@v3
+        with:
+          name: stress-test-grafana
+          path: reports/grafana_perf_export.json

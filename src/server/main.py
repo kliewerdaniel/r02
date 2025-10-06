@@ -11,6 +11,7 @@ from src.telemetry.metrics import (
     HANDSHAKE_TOTAL, CHALLENGE_TOTAL, RESOURCE_ACCESS_TOTAL, KEY_OPERATIONS_TOTAL,
     Timer, HANDSHAKE_DURATION, get_metrics
 )
+from src.qkd.hardware_driver import load_qkd_driver
 from .middleware import rate_limit_middleware, request_signature_middleware
 import structlog
 
@@ -28,7 +29,7 @@ from src.config.crypto_config import validate_crypto_config
 validate_crypto_config()
 logger.info("Crypto configuration validated successfully")
 
-app = FastAPI(title="QASP Server v0.2", version="0.2.0")
+app = FastAPI(title="QASP Server v1.0", version="1.0.0")
 
 # Initialize HSM keystore if enabled
 keystore = None
@@ -36,6 +37,10 @@ if HSM_ENABLED:
     from src.hsm.mock_hsm import MockHSM
     keystore = MockHSM()
     app.state.keystore = keystore
+
+# Initialize QKD driver
+qkd_driver = load_qkd_driver()
+logger.info("QKD driver loaded", driver_type=type(qkd_driver).__name__, available=qkd_driver.is_available())
 
 # Server's cryptographic keys
 server_kem = PQCKEM(keystore, "server")
@@ -113,23 +118,25 @@ async def initialize_session(request: Request):
             # Decapsulate shared secret
             shared_secret = server_kem.decapsulate(kem_encaps)
 
+            # Generate session_id early for QKD key association
+            session_id = str(uuid.uuid4())
+
             # Optional QKD
             qkd_key = None
+            qkd_metadata = None
             if supported_qkd:
-                async with httpx.AsyncClient() as client:
-                    resp = await client.get(f"{QKD_URL}/qkd/session")
-                    resp.raise_for_status()
-                    qkd_data = resp.json()
-                    qkd_key = base64.b64decode(qkd_data["qkd_key"])
+                try:
+                    qkd_key, qkd_metadata = qkd_driver.get_qkd_key(session_id)
+                    logger.info("QKD key retrieved", session_id=session_id, device_id=qkd_metadata.get("device_id"), latency_ms=qkd_metadata.get("latency_ms"))
+                except Exception as e:
+                    logger.warning("QKD hardware failed, falling back to PQC-only", session_id=session_id, error=str(e))
+                    # Fallback to PQC-only, qkd_key remains None
 
             # Generate server nonce
             server_nonce = os.urandom(16)
 
             # Derive session key
             session_key = derive_session_key(shared_secret, qkd_key, None, client_nonce, server_nonce)
-
-            # Create session token (AEAD encrypted with session key)
-            session_id = str(uuid.uuid4())
             token_payload = {
                 "session_id": session_id,
                 "expiry": time.time() + SESSION_EXPIRY,
@@ -234,7 +241,7 @@ def get_protected_resource(request: Request):
         logger.warning("Protected resource access attempted with expired session", session_id=session["session_id"], security_event="resource_expired")
         raise HTTPException(status_code=401, detail="Session expired")
 
-    response_plaintext = b"Hello, protected world from QASP v0.2"
+    response_plaintext = b"Hello, protected world from QASP v1.0"
     nonce, ct = aead_encrypt(session["key"], response_plaintext, b"response")
 
     RESOURCE_ACCESS_TOTAL.labels(result='success', tenant_id=tenant_id).inc()
@@ -273,6 +280,18 @@ def metrics_endpoint():
     Prometheus metrics endpoint for monitoring.
     """
     return Response(content=get_metrics(), media_type="text/plain")
+
+@app.get("/hardware/status")
+def hardware_status():
+    """
+    Hardware QKD status endpoint for monitoring.
+    """
+    return {
+        "qkd_hardware_enabled": os.getenv("QKD_HARDWARE_ENABLED", "false").lower() == "true",
+        "qkd_mode": os.getenv("QKD_MODE", "simulated"),
+        "driver_available": qkd_driver.is_available(),
+        "driver_type": type(qkd_driver).__name__,
+    }
 
 if __name__ == "__main__":
     import uvicorn

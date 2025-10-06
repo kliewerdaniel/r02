@@ -1,0 +1,22 @@
+global:
+  scrape_interval: 15s
+  scrape_timeout: 10s
+
+rule_files:
+  - "infra/monitoring/prometheus_rules.yml"
+
+scrape_configs:
+  - job_name: qasp-server
+    static_configs:
+      - targets: ['qasp-server:8000']
+    metrics_path: '/metrics'
+
+  - job_name: postgres
+    static_configs:
+      - targets: ['postgres:5432']
+    metrics_path: '/metrics'
+
+  - job_name: mock-hsm
+    static_configs:
+      - targets: ['mock-hsm:8888']
+    metrics_path: '/metrics'

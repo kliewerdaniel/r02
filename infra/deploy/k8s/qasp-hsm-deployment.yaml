@@ -1,0 +1,102 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: qasp-hsm
+  labels:
+    app: qasp-hsm
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: qasp-hsm
+  template:
+    metadata:
+      labels:
+        app: qasp-hsm
+    spec:
+      containers:
+      - name: qasp-hsm
+        image: qasp-server:latest
+        ports:
+        - containerPort: 8888
+          name: hsm
+        env:
+        - name: HSM_TYPE
+          value: "external"
+        - name: HSM_ENABLED
+          value: "true"
+        - name: MASTER_KEY
+          valueFrom:
+            secretKeyRef:
+              name: qasp-secrets
+              key: master-key
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8888
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8888
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        command: ["python", "-m", "src.hsm.mock_hsm", "serve", "--port", "8888"]
+        volumeMounts:
+        - name: hsm-storage
+          mountPath: /app/hsm
+        resources:
+          limits:
+            cpu: 200m
+            memory: 256Mi
+          requests:
+            cpu: 50m
+            memory: 128Mi
+      volumes:
+      - name: hsm-storage
+        persistentVolumeClaim:
+          claimName: hsm-pvc
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: hsm-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: qasp-secrets
+type: Opaque
+data:
+  master-key: ZGVmYXVsdDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5MA==  # base64 encoded 'default123456789012345678901234567890'
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: qasp-aws-kms
+type: Opaque
+data:
+  region: dXMtZWFzdC0x  # base64 encoded 'us-east-1'
+  access-key-id: eHg=  # placeholder, needs to be updated
+  secret-access-key: eHg=  # placeholder, needs to be updated
+  key-id: eHg=  # placeholder, needs to be updated
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: qasp-vault
+type: Opaque
+data:
+  addr: eHg=  # placeholder, needs to be updated
+  token: eHg=  # placeholder, needs to be updated

@@ -5,7 +5,7 @@ This module defines metrics for monitoring QASP handshake performance, failures,
 and key operations. Exposes a /metrics endpoint for Prometheus scraping.
 """
 
-from prometheus_client import Counter, Histogram, CollectorRegistry, generate_latest
+from prometheus_client import Counter, Histogram, Gauge, CollectorRegistry, generate_latest
 from prometheus_client.exposition import make_wsgi_app
 import time
 
@@ -46,6 +46,26 @@ KEY_OPERATIONS_TOTAL = Counter(
     'qasp_key_operations_total',
     'Total number of key management operations',
     ['operation', 'result'],  # store, retrieve, list, rotate
+    registry=registry
+)
+
+# QKD hardware and failover metrics
+QKD_STATUS = Gauge(
+    'qasp_qkd_status',
+    'Current QKD hardware status (0=unknown, 1=healthy, 2=degraded, 3=failed)',
+    registry=registry
+)
+
+QKD_FAILOVER_EVENTS = Counter(
+    'qasp_qkd_failover_events_total',
+    'Total number of QKD failover events',
+    ['reason'],  # health_check_failure, key_retrieval_failure
+    registry=registry
+)
+
+QKD_LATENCY = Histogram(
+    'qasp_qkd_latency_seconds',
+    'Latency of QKD key retrieval operations',
     registry=registry
 )
 
@@ -97,5 +117,6 @@ def time_handshake(operation: str):
 __all__ = [
     'registry', 'get_metrics', 'make_metrics_app',
     'HANDSHAKE_DURATION', 'HANDSHAKE_TOTAL', 'CHALLENGE_TOTAL', 'RESOURCE_ACCESS_TOTAL', 'KEY_OPERATIONS_TOTAL',
+    'QKD_STATUS', 'QKD_FAILOVER_EVENTS', 'QKD_LATENCY',
     'Timer', 'time_handshake'
 ]

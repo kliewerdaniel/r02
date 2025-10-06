@@ -1,0 +1,114 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: qasp-server
+  labels:
+    app: qasp-server
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: qasp-server
+  template:
+    metadata:
+      labels:
+        app: qasp-server
+    spec:
+      containers:
+      - name: qasp-server
+        image: qasp-server:latest
+        ports:
+        - containerPort: 8000
+          name: http
+        - containerPort: 9090
+          name: metrics
+        env:
+        - name: DATABASE_URL
+          value: "postgresql://qasp:password@postgres/qasp"
+        - name: HSM_TYPE
+          value: "mock"
+        - name: HSM_ENABLED
+          value: "true"
+        - name: MASTER_KEY
+          valueFrom:
+            secretKeyRef:
+              name: qasp-secrets
+              key: master-key
+        - name: KEM_ALG
+          value: "Kyber512"
+        - name: SIG_ALG
+          value: "Dilithium3"
+        - name: PROMETHEUS_PORT
+          value: "9090"
+        - name: LOG_LEVEL
+          value: "INFO"
+        - name: RATE_LIMIT_REQUESTS
+          value: "10"
+        - name: RATE_LIMIT_PERIOD
+          value: "60"
+        - name: ENABLE_REQUEST_SIGNATURES
+          value: "true"
+        - name: DEFAULT_TENANT_ID
+          value: "default"
+        - name: KEY_ROTATION_ENABLED
+          value: "true"
+        - name: KEY_ROTATION_INTERVAL_HOURS
+          value: "24"
+        # AWS KMS config (if needed)
+        - name: AWS_REGION
+          valueFrom:
+            secretKeyRef:
+              name: qasp-aws-kms
+              key: region
+        - name: AWS_ACCESS_KEY_ID
+          valueFrom:
+            secretKeyRef:
+              name: qasp-aws-kms
+              key: access-key-id
+        - name: AWS_SECRET_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: qasp-aws-kms
+              key: secret-access-key
+        - name: KMS_KEY_ID
+          valueFrom:
+            secretKeyRef:
+              name: qasp-aws-kms
+              key: key-id
+        # Vault config (if needed)
+        - name: VAULT_ADDR
+          valueFrom:
+            secretKeyRef:
+              name: qasp-vault
+              key: addr
+        - name: VAULT_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: qasp-vault
+              key: token
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        resources:
+          limits:
+            cpu: 500m
+            memory: 512Mi
+          requests:
+            cpu: 100m
+            memory: 256Mi
+        volumeMounts:
+        - name: logs
+          mountPath: /app/logs
+      volumes:
+      - name: logs
+        emptyDir: {}
+      restartPolicy: Always
