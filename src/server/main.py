@@ -11,6 +11,7 @@ from src.telemetry.metrics import (
     HANDSHAKE_TOTAL, CHALLENGE_TOTAL, RESOURCE_ACCESS_TOTAL, KEY_OPERATIONS_TOTAL,
     Timer, HANDSHAKE_DURATION, get_metrics
 )
+from src.analytics.metrics_collector import LTSMetricsCollector
 from src.qkd.hardware_driver import load_qkd_driver
 from .middleware import rate_limit_middleware, request_signature_middleware
 import structlog
@@ -273,6 +274,58 @@ def list_tenants(request: Request):
     """
     tenants = list(_clients.keys())
     return {"tenants": tenants}
+
+@app.get("/analytics/usage")
+def get_analytics_usage(request: Request):
+    """
+    LTS Analytics usage endpoint.
+    Read-only, admin-authenticated. Returns aggregated multi-tenant metrics.
+    """
+    # Simulate admin authentication (in real, check token)
+    admin_header = request.headers.get("x-admin-auth")
+    if not admin_header or admin_header != os.getenv("ADMIN_TOKEN", "default-admin-token"):
+        raise HTTPException(status_code=403, detail="Admin authentication required")
+
+    collector = LTSMetricsCollector()
+    data = collector.collect_usage_stats()
+    return {"usage_stats": data}
+
+@app.post("/research/submit")
+async def submit_research_metrics(request: Request):
+    """
+    Research collaboration endpoint.
+    Receives signed performance and interoperability metrics from research partners.
+    Simulated: validates DID and signature (mock implementation).
+    """
+    data = await request.json()
+    researcher_did = data.get("researcher_did")
+    metrics = data.get("metrics")
+    signature = data.get("signature")
+
+    if not researcher_did or not metrics or not signature:
+        raise HTTPException(status_code=400, detail="Missing required fields: researcher_did, metrics, signature")
+
+    # Simulate attestation: Check if DID is known and verify signature
+    # In real: Resolve DID public key, verify Dilithium signature
+    known_dids = {"did:qasp:researcher123", "did:qasp:partner456"}  # Mock
+    if researcher_did not in known_dids:
+        raise HTTPException(status_code=403, detail="Unauthorized researcher DID")
+
+    # Mock signature verification
+    if not signature.startswith("dilithium_"):
+        raise HTTPException(status_code=401, detail="Invalid signature")
+
+    # Store submitted data (simulate)
+    submission = {
+        "did": researcher_did,
+        "metrics": metrics,
+        "timestamp": data.get("timestamp"),
+        "attested": True
+    }
+    # In real: Append to research DB
+    print(f"Research submission received: {submission}")
+
+    return {"status": "submitted", "attestation_id": uuid.uuid4().hex}
 
 @app.get("/metrics")
 def metrics_endpoint():

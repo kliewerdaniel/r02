@@ -205,4 +205,42 @@ Example entry (seeded by CLIne on repo init):
   commit: "TBD"
   notes: "QASP v1.0 Stable Release completed"
 
+- id: 0011
+  date: 2025-10-17
+  actor: CLIne
+  task: "Establish LTS maintenance branch and security automation"
+  status: done
+  decisions:
+    - "LTS policy established with quarterly patch cadence"
+    - "Weekly automated vulnerability scans added"
+  files_created:
+    - docs/LTS_POLICY.md
+    - release/LTS_CHANGELOG.md
+    - tools/generate_patch.py
+    - .github/workflows/security-scan-weekly.yml
+  commit: "TBD"
+  notes: "Long-Term Support infrastructure ready"
+
+- id: 0012
+  date: 2025-10-20
+  actor: CLIne
+  task: "Design QASP v2.0 architecture with adaptive cryptography & multi-vendor quantum network"
+  status: done
+  decisions:
+    - "Introduced AI-driven cryptographic agility concept"
+    - "Outlined multi-vendor QKD mesh architecture"
+  files_created:
+    - specs/QASP_V2_0_DRAFT.md
+    - src/ai_threat/monitor.py
+    - docs/AI_SECURITY_ADVISOR.md
+    - src/qkd/hardware_driver.py (extended)
+    - src/qkd/registry.json
+    - tools/qkd_register_vendor.py
+    - src/analytics/metrics_collector.py
+    - src/server/main.py (extended)
+    - .github/workflows/lts-metrics-report.yml
+    - docs/RESEARCH_PORTAL.md
+  commit: "TBD"
+  notes: "QASP v2.0 research framework established"
+
 •	New entries MUST include: id, date, actor, task, status, files_changed, commit, notes.

@@ -111,25 +111,86 @@ class HardwareQKDDriver(IQKDDriver):
         return self._sdk_available
 
 
+class HuaweiQKDDriver(IQKDDriver):
+    """
+    Mock Huawei QKD driver for simulation.
+    """
+    def __init__(self, config: Dict[str, Any] = None):
+        self.config = config or {}
+        self.device_id = self.config.get("device_id", "huawei-qkd-001")
+
+    def get_qkd_key(self, session_id: str) -> Tuple[bytes, Dict[str, Any]]:
+        start_time = time.time()
+        time.sleep(0.015)  # Simulated latency
+        key = hashlib.sha3_256(f"{session_id}-{uuid.uuid4()}".encode()).digest()[:32]
+        latency_ms = (time.time() - start_time) * 1000
+        metadata = {
+            "latency_ms": round(latency_ms, 2),
+            "device_id": self.device_id,
+            "vendor": "Huawei",
+            "key_length_bits": 256
+        }
+        return key, metadata
+
+    def is_available(self) -> bool:
+        return True
+
+
+class QuantumXchangePhioDriver(IQKDDriver):
+    """
+    Mock Quantum Xchange Phio QKD driver for simulation.
+    """
+    def __init__(self, config: Dict[str, Any] = None):
+        self.config = config or {}
+        self.device_id = self.config.get("device_id", "qx-phio-qkd-001")
+
+    def get_qkd_key(self, session_id: str) -> Tuple[bytes, Dict[str, Any]]:
+        start_time = time.time()
+        time.sleep(0.012)  # Simulated latency
+        key = hashlib.sha3_512(f"{session_id}-{uuid.uuid4()}".encode()).digest()[:32]
+        latency_ms = (time.time() - start_time) * 1000
+        metadata = {
+            "latency_ms": round(latency_ms, 2),
+            "device_id": self.device_id,
+            "vendor": "QuantumXchange",
+            "key_length_bits": 256
+        }
+        return key, metadata
+
+    def is_available(self) -> bool:
+        return True
+
+
+# Multi-vendor plugin registry
+QKD_DRIVERS_REGISTRY = {
+    "simulated": SimulatedQKDDriver,
+    "huawei": HuaweiQKDDriver,
+    "quantumxchange_phio": QuantumXchangePhioDriver,
+}
+
+
 def load_qkd_driver() -> IQKDDriver:
     """
     Load QKD driver based on environment configuration.
+    Supports multi-vendor drivers via registry.
     """
     qkd_enabled = os.getenv("QKD_HARDWARE_ENABLED", "false").lower() == "true"
-    qkd_mode = os.getenv("QKD_MODE", "simulated")
+    qkd_vendor = os.getenv("QKD_VENDOR", "simulated")
 
     if not qkd_enabled:
         return SimulatedQKDDriver()  # Fallback to sim even if not enabled?
 
-    if qkd_mode == "simulated":
-        return SimulatedQKDDriver()
-    elif qkd_mode == "hardware":
-        # Load hardware config, for example from env or file
-        hardware_config = {
-            "vendor": os.getenv("QKD_VENDOR", "id_quantique"),
-            "device_id": os.getenv("QKD_DEVICE_ID", "hw-qkd-001"),
-            "device_type": "cerberis"
-        }
-        return HardwareQKDDriver(vendor_sdk_config=hardware_config)
+    if qkd_vendor in QKD_DRIVERS_REGISTRY:
+        driver_class = QKD_DRIVERS_REGISTRY[qkd_vendor]
+        if qkd_vendor == "simulated":
+            return driver_class()
+        else:
+            # Load hardware config
+            config = {
+                "vendor": qkd_vendor,
+                "device_id": os.getenv("QKD_DEVICE_ID", f"{qkd_vendor}-001"),
+                "device_type": os.getenv("QKD_DEVICE_TYPE", "unknown")
+            }
+            return driver_class(config=config)
     else:
-        raise ValueError(f"Invalid QKD mode: {qkd_mode}")
+        raise ValueError(f"Unsupported QKD vendor: {qkd_vendor}. Available: {list(QKD_DRIVERS_REGISTRY.keys())}")

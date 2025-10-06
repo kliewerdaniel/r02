@@ -1,0 +1,8 @@
+{
+  "qkd_drivers": {
+    "simulated": "src.qkd.hardware_driver.SimulatedQKDDriver",
+    "huawei": "src.qkd.hardware_driver.HuaweiQKDDriver",
+    "quantumxchange_phio": "src.qkd.hardware_driver.QuantumXchangePhioDriver"
+  },
+  "description": "Mapping of QKD vendor names to their driver class paths for dynamic loading."
+}
