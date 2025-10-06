@@ -87,4 +87,49 @@ Example entry (seeded by CLIne on repo init):
   commit: "be7143d"
   notes: "Implementation & audit pipeline integrated; server uses HSM when HSM_ENABLED=true."
 
+- id: 0005
+  date: 2025-10-09
+  actor: CLIne
+  task: "Design QASP v0.2 interoperability & multi-tenant model"
+  status: done
+  decisions:
+    - "Canonical JSON for cross-language compatibility"
+    - "Tenant isolation enforced in key derivation & metrics"
+  files_created:
+    - specs/QASP_V0_2.md
+    - src/interop/qasp_interop.py
+    - src/formal/qasp_model.py
+    - docs/FORMAL_VERIFICATION.md
+  commit: "ba8d4c7"
+  notes: "Interoperability scaffolding complete"
+
+- id: 0006
+  date: 2025-10-10
+  actor: CLIne
+  task: "Implement v0.2 handshake, SDK, and formal verification hooks"
+  status: done
+  decisions:
+    - "Multi-tenant key storage with tenant_id partitions"
+    - "Session tokens bound to tenant_id"
+    - "Trace logging for formal analysis"
+    - "Python SDK with interoperability functions"
+  files_created:
+    - sdk/python/qasp_sdk/
+    - examples/sdk_demo.py
+    - tests/conformance/test_serialization.py
+    - tests/formal/test_trace_log.py
+    - tests/test_multi_tenant.py
+  files_changed:
+    - src/hsm/abstract_store.py
+    - src/hsm/mock_hsm.py
+    - src/qasp/crypto.py
+    - src/server/main.py
+    - src/server/middleware.py
+    - src/telemetry/metrics.py
+    - docs/SECURITY.md
+    - README.md
+    - ci/pipeline.yaml
+  commit: "ba8d4c7"
+  notes: "QASP v0.2 complete — interoperable & formally traceable"
+
 •	New entries MUST include: id, date, actor, task, status, files_changed, commit, notes.
