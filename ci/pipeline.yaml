@@ -1,0 +1,7 @@
+CI skeleton (conceptual)
+•	jobs:
+•	lint
+•	unit-tests
+•	pqc-compat-check (run pqc integration tests / size/perf)
+•	security-scan
+•	deploy-staging
