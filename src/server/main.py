@@ -7,11 +7,21 @@ from fastapi import FastAPI, HTTPException, Request
 import httpx
 from src.qasp.crypto import PQCKEM, PQCSign, derive_session_key, aead_encrypt, aead_decrypt
 
+# Check if HSM is enabled
+HSM_ENABLED = os.getenv("HSM_ENABLED", "false").lower() == "true"
+
 app = FastAPI(title="QASP Server v0.1", version="0.1.0")
 
+# Initialize HSM keystore if enabled
+keystore = None
+if HSM_ENABLED:
+    from src.hsm.mock_hsm import MockHSM
+    keystore = MockHSM()
+    app.state.keystore = keystore
+
 # Server's cryptographic keys
-server_kem = PQCKEM()
-server_sign = PQCSign()
+server_kem = PQCKEM(keystore, "server")
+server_sign = PQCSign(keystore, "server")
 server_kem.generate_keypair()
 server_sign.generate_keypair()
 
@@ -165,6 +175,18 @@ def get_protected_resource(request: Request):
         "nonce": base64.b64encode(nonce).decode(),
         "ciphertext": base64.b64encode(ct).decode()
     }
+
+@app.get("/admin/keys")
+def list_keys(request: Request):
+    """
+    Admin endpoint to list all registered keys in the keystore.
+    Requires admin mode; for prototype, returns all.
+    """
+    if not HSM_ENABLED or keystore is None:
+        raise HTTPException(status_code=404, detail="HSM not enabled")
+
+    keys = keystore.list_keys()
+    return {"keys": keys}
 
 if __name__ == "__main__":
     import uvicorn

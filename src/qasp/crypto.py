@@ -4,26 +4,36 @@ from cryptography.hazmat.primitives.ciphers.aead import AESGCM, ChaCha20Poly1305
 from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 from cryptography.hazmat.primitives import hashes
 import oqs
+from .hsm.abstract_store import KeyStoreABC
 
+# TODO: Remove hardcoded algorithms, use config from crypto_config.py
 # Use NIST PQC recommended algorithms for prototyping
 KEM_ALGORITHM = "Kyber512"
 SIGNATURE_ALGORITHM = "Dilithium3"
 
 class PQCKEM:
-    def __init__(self):
+    def __init__(self, keystore: Optional[KeyStoreABC] = None, client_id: Optional[str] = None):
         self.kem = oqs.KeyEncapsulation(KEM_ALGORITHM)
         self.public_bytes = None
-        self._private_key = None
+        self.keystore = keystore
+        self.client_id = client_id
 
     def generate_keypair(self) -> bytes:
         self.public_bytes = self.kem.generate_keypair()
+        if self.keystore and self.client_id:
+            try:
+                # Export the secret key and store in keystore for persistence
+                secret_key = self.kem.export_secret_key()
+                self.keystore.store_private_key(self.client_id, 'kem', secret_key)
+            except AttributeError:
+                # If export_secret_key not available, skip HSM storage
+                pass
         return self.public_bytes
 
     def encapsulate(self, peer_pub: bytes) -> Tuple[bytes, bytes]:
         if len(peer_pub) != self.kem.details["public_key_length"]:
             raise ValueError("Invalid peer public key length")
         ciphertext, shared_secret = self.kem.encap_secret(peer_pub)
-        # TODO: integrate HSM for private key operations
         return ciphertext, shared_secret
 
     def decapsulate(self, ciphertext: bytes) -> bytes:
@@ -34,13 +44,17 @@ class PQCKEM:
         return self.public_bytes
 
 class PQCSign:
-    def __init__(self):
+    def __init__(self, keystore: Optional[KeyStoreABC] = None, client_id: Optional[str] = None):
         self.sig = oqs.Signature(SIGNATURE_ALGORITHM)
         self.public_bytes = None
         self._private_key = None
+        self.keystore = keystore
+        self.client_id = client_id
 
     def generate_keypair(self) -> bytes:
         self.public_bytes, self._private_key = self.sig.generate_keypair()
+        if self.keystore and self.client_id:
+            self.keystore.store_private_key(self.client_id, 'sign', self._private_key)
         return self.public_bytes
 
     def sign(self, message: bytes) -> bytes:
